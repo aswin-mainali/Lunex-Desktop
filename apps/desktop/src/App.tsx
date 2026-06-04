@@ -18,6 +18,7 @@ export function App() {
   const [settings, setSettings] = useState<SettingsMap>({});
   const [tasks, setTasks] = useState<Task[]>([]);
   const [voiceNotice, setVoiceNotice] = useState('');
+  const [voiceDebug, setVoiceDebug] = useState({ micPermission: 'not requested', clapListener: 'inactive', lastClapEvent: 'none' });
   const lastEvent = useRef<string | undefined>('none');
 
   const refreshTasks = async () => { try { setTasks(await api.tasks()); } catch { /* backend offline */ } };
@@ -38,21 +39,30 @@ export function App() {
   useEffect(() => { refresh(); refreshTasks(); refreshSettings(); const timer = window.setInterval(refresh, 2500); return () => window.clearInterval(timer); }, []);
   useEffect(() => {
     if (!activation.wake_listening) { audioService.stopWakePhraseListening(); return; }
+    setVoiceDebug((debug) => ({ ...debug, micPermission: 'granted' }));
     audioService.startWakePhraseListening(async () => {
       const next = await api.simulateWake();
       showTransientState('wake_detected', next);
-    }).catch(() => setVoiceNotice('Microphone permission denied. Enable microphone access to use voice activation.'));
+    }).catch((error: Error) => {
+      setVoiceDebug((debug) => ({ ...debug, micPermission: error.message.includes('unsupported') ? debug.micPermission : 'denied' }));
+      setVoiceNotice(error.message || 'Microphone permission denied. Enable microphone access to use voice activation.');
+    });
     return () => audioService.stopWakePhraseListening();
   }, [activation.wake_listening]);
   useEffect(() => {
-    if (!activation.clap_listening) { audioService.stopDoubleClapDetection(); return; }
+    if (!activation.clap_listening) { audioService.stopDoubleClapDetection(); setVoiceDebug((debug) => ({ ...debug, clapListener: 'inactive' })); return; }
+    setVoiceDebug((debug) => ({ ...debug, micPermission: 'granted', clapListener: 'active' }));
     audioService.startDoubleClapDetection(async () => {
+      setVoiceDebug((debug) => ({ ...debug, lastClapEvent: new Date().toLocaleTimeString() }));
       const next = await api.simulateClap();
       showTransientState('clap_detected', next);
-    }).catch(() => setVoiceNotice('Microphone permission denied. Enable microphone access to use voice activation.'));
-    return () => audioService.stopDoubleClapDetection();
+    }).catch(() => {
+      setVoiceDebug((debug) => ({ ...debug, micPermission: 'denied', clapListener: 'inactive' }));
+      setVoiceNotice('Microphone permission denied. Enable microphone access to use voice activation.');
+    });
+    return () => { audioService.stopDoubleClapDetection(); setVoiceDebug((debug) => ({ ...debug, clapListener: 'inactive' })); };
   }, [activation.clap_listening]);
 
-  const content = page === 'Home' ? <Dashboard connected={connected} activation={activation} setActivation={setActivation} settings={settings} voiceNotice={voiceNotice} setVoiceNotice={setVoiceNotice} tasks={tasks} setTasks={setTasks} refreshTasks={refreshTasks} setPage={setPage} /> : page === 'Settings' ? <SettingsPage setActivation={setActivation} onSettingsChanged={setSettings} /> : page === 'Command Center' ? <CommandCenter /> : page === 'Tasks' ? <TasksPage tasks={tasks} setTasks={setTasks} refreshTasks={refreshTasks} /> : <SimplePage title={page} />;
+  const content = page === 'Home' ? <Dashboard connected={connected} activation={activation} setActivation={setActivation} settings={settings} voiceNotice={voiceNotice} setVoiceNotice={setVoiceNotice} voiceDebug={voiceDebug} setVoiceDebug={setVoiceDebug} tasks={tasks} setTasks={setTasks} refreshTasks={refreshTasks} setPage={setPage} /> : page === 'Settings' ? <SettingsPage setActivation={setActivation} onSettingsChanged={setSettings} /> : page === 'Command Center' ? <CommandCenter /> : page === 'Tasks' ? <TasksPage tasks={tasks} setTasks={setTasks} refreshTasks={refreshTasks} /> : <SimplePage title={page} />;
   return <AppShell page={page} setPage={setPage} connected={connected} activation={activation}>{content}</AppShell>;
 }

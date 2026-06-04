@@ -22,6 +22,8 @@ npm run tauri
 - FastAPI backend on port 8787.
 - SQLite tables for command history, memory items, settings, tasks, and activation events.
 - Reactive AI core states for idle, wake detected, listening, transcribing, thinking, responding, double clap, confirmation required, blocked, and error.
+- Real safe Windows app launching for an allowlist: Calculator, Notepad, Paint, Command Prompt, PowerShell, File Explorer, and Settings.
+- Real safe website opening for approved names such as Google, YouTube, Gmail, GitHub, ChatGPT, OpenAI, and backend docs, plus safe http/https URLs.
 - Frontend microphone service for permission requests, push-to-talk recording, amplitude metering, wake listening, and double-clap detection.
 - Wake phrase detection with browser speech recognition when available, plus a backend `/activation/check-wake` endpoint that checks transcripts for `hey lunex`, `hello lunex`, or `lunex`.
 - Double clap detection with the Web Audio API: two amplitude peaks within 250-900 ms activate listening mode, with a cooldown to ignore repeated triggers.
@@ -37,8 +39,14 @@ npm run tauri
 ## Mocked or placeholder in v1
 - OpenAI completion, transcription, web search, file search, document summary, and backend TTS return safe mock output when no API key is present.
 - `/audio/transcribe` returns a development mock transcript with `mock: true` / `mocked: true` and a clear message when no transcription provider is configured.
-- Wake audio chunk transcription falls back to a clear mock response unless browser speech recognition is available.
+- Wake phrase detection is real only when the Tauri WebView exposes Web Speech API. If unsupported, Lunex shows an honest unsupported message and recommends push-to-talk or clap activation.
 - Folder connection is a Settings placeholder. Lunex does not scan user files automatically.
+
+## Safe local actions
+- `open calculator`, `open notepad`, `open paint`, `open command prompt`, `open powershell`, `open file explorer`, and `open settings` launch only strict allowlisted Windows commands with `subprocess.Popen(..., shell=False)`.
+- Unapproved apps such as `open chrome` are blocked.
+- `open youtube`, `open github`, `open chatgpt`, `open google`, and safe `http`/`https` URLs use Python `webbrowser.open`.
+- Unsafe URL schemes such as `file:`, `javascript:`, `cmd:`, or PowerShell-like targets are blocked.
 
 ## Voice task creation flow
 1. Click the microphone button.

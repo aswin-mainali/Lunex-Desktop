@@ -112,9 +112,7 @@ class AudioService {
       this.wakeRecognition = recognition;
       return;
     }
-    // Fallback: record short chunks every few seconds and let the backend check transcription.
-    this.wakeTimer = window.setInterval(() => void this.captureWakeChunk(onWake), 3500);
-    await this.captureWakeChunk(onWake);
+    throw new Error('Wake phrase detection is not supported by this WebView yet. Use push-to-talk or clap activation.');
   }
 
   stopWakePhraseListening(): void {

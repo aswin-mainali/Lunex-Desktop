@@ -6,7 +6,7 @@ import { audioService } from '../../services/audioService';
 import { speakResponse } from '../../services/ttsService';
 import type { ActivationStatus, CommandResponse } from '../../types/api';
 
-export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled, pushToTalkEnabled, setVoiceNotice }: { onResult: (r: CommandResponse | string) => void; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; onTaskCreated: () => Promise<void>; ttsEnabled: boolean; pushToTalkEnabled: boolean; setVoiceNotice: (message: string) => void }) {
+export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled, pushToTalkEnabled, setVoiceNotice, onMicPermission }: { onResult: (r: CommandResponse | string) => void; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; onTaskCreated: () => Promise<void>; ttsEnabled: boolean; pushToTalkEnabled: boolean; setVoiceNotice: (message: string) => void; onMicPermission?: (status: string) => void }) {
   const [command, setCommand] = useState('');
   const [recording, setRecording] = useState(false);
 
@@ -50,12 +50,14 @@ export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled,
         setVoiceNotice('');
         setActivation((current) => ({ ...current, state: 'listening', current_state: 'listening' }));
         await audioService.startRecording();
+        onMicPermission?.('granted');
         setRecording(true);
       } else {
         await stopAndRouteRecording();
       }
     } catch {
       setRecording(false);
+      onMicPermission?.('denied');
       setActivation((current) => ({ ...current, state: 'error', current_state: 'error' }));
       setVoiceNotice('Microphone permission denied. Enable microphone access to use voice activation.');
       finishState('error');
@@ -65,8 +67,10 @@ export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled,
   const toggleWake = async () => {
     try {
       await audioService.requestMicrophone();
+      onMicPermission?.('granted');
       setActivation(await api.toggleWake(true));
     } catch {
+      onMicPermission?.('denied');
       setVoiceNotice('Microphone permission denied. Enable microphone access to use voice activation.');
     }
   };
