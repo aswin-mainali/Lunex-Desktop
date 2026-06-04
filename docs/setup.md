@@ -1,0 +1,47 @@
+# Lunex setup
+
+## Requirements
+- Windows 10/11 recommended.
+- Python 3.11+.
+- Node.js 20+ and npm.
+- Rust toolchain and WebView2 for Tauri v2.
+
+## Backend
+```powershell
+cd backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8787
+```
+
+## Desktop
+```powershell
+cd apps\desktop
+npm install
+npm run tauri
+```
+Use the npm Tauri CLI only; do not start this app with `cargo tauri dev`.
+
+## What is real in v1
+- FastAPI service on port 8787.
+- SQLite schema and persistence for settings, memory, command history, tasks, and activation events.
+- Command router with intent and safety classification.
+- React dashboard, settings, and command history pages.
+- Push-to-talk UI that records browser audio when available and posts to `/audio/transcribe`.
+- Wake and clap toggles that update backend activation state.
+
+## What is mocked or placeholder
+- OpenAI responses, transcription, web search, file search, document summaries, and TTS all return safe mock responses when `OPENAI_API_KEY` is missing.
+- Wake phrase detection is practical placeholder logic: audio transcription text is checked for `Hey Lunex`.
+- Double-clap detection is implemented as amplitude peak logic in the backend and can be wired to real microphone packages later.
+- Voice response is text-only; the TTS service contains a non-blocking placeholder.
+
+## Wake phrase and double clap safety
+Wake phrase and double clap only move Lunex into `listening` mode. They never call `/commands/route` and never execute a command directly.
+
+## Troubleshooting
+- Backend offline: confirm `uvicorn app.main:app --reload --port 8787` is running.
+- Missing API key: expected; Lunex returns mock data and does not crash.
+- Vite watch issues: `vite.config.ts` ignores `src-tauri/target`, `node_modules`, and `.git`.
+- Icons: bundling is disabled in v1 so dev mode avoids missing icon errors.
