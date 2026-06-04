@@ -70,12 +70,13 @@ class AudioService {
     return api.transcribe(blob);
   }
 
-  async startDoubleClapDetection(onDetected: DetectionHandler, onAmplitude?: AmplitudeHandler): Promise<void> {
+  async startDoubleClapDetection(onDetected: DetectionHandler, onAmplitude?: AmplitudeHandler, onPeak?: DetectionHandler): Promise<void> {
     await this.startAmplitudeMeter((amplitude) => {
       onAmplitude?.(amplitude);
       const now = Date.now();
       const isPeak = amplitude > 0.62;
       if (!isPeak || now - this.lastDetectionAt < 2000) return;
+      onPeak?.();
       if (this.lastPeakAt && now - this.lastPeakAt >= 250 && now - this.lastPeakAt <= 900) {
         this.lastDetectionAt = now;
         this.lastPeakAt = 0;
@@ -112,7 +113,7 @@ class AudioService {
       this.wakeRecognition = recognition;
       return;
     }
-    throw new Error('Wake phrase detection is not supported by this WebView yet. Use push-to-talk or clap activation.');
+    throw new Error('Wake phrase detection is not supported in this WebView yet. Use push-to-talk or double clap.');
   }
 
   stopWakePhraseListening(): void {
