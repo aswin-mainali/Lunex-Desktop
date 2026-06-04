@@ -26,8 +26,11 @@ def seed_defaults(conn: sqlite3.Connection) -> None:
     defaults: dict[str, Any] = {
         "privacy_mode": False,
         "wake_phrase_enabled": False,
+        "wake_enabled": False,
         "double_clap_enabled": False,
+        "clap_enabled": False,
         "push_to_talk_enabled": True,
+        "tts_enabled": True,
         "microphone_device": "Default microphone",
         "openai_api_key_placeholder": "Set OPENAI_API_KEY in backend/.env",
         "folders": "Documents, Desktop, Downloads",

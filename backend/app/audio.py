@@ -9,6 +9,7 @@ class AudioService:
         return {
             "transcript": transcript,
             "mocked": True,
+            "mock": True,
             "activation_state": activation_manager.state,
             "message": "Mock transcription used because no API key is configured.",
         }

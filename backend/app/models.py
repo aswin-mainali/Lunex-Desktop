@@ -40,7 +40,18 @@ class ActivationStatus(BaseModel):
 class TranscriptionResponse(BaseModel):
     transcript: str
     mocked: bool
+    mock: bool = False
     activation_state: str
+    message: str | None = None
+
+class WakeCheckRequest(BaseModel):
+    transcript: str = ""
+
+class WakeCheckResponse(BaseModel):
+    wake_detected: bool
+    phrase: str | None = None
+    transcript: str = ""
+    mock: bool = False
     message: str | None = None
 
 class TaskCreate(BaseModel):

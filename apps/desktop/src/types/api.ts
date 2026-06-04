@@ -5,3 +5,5 @@ export type TaskInput = { title: string; notes?: string; due_date?: string | nul
 export type CommandResponse = { command: string; intent: string; safety_level: string; status: string; response: string; requires_confirmation: boolean; activation_state: string; task?: Task | null };
 export type CommandHistory = CommandResponse & { id: number; created_at: string; command_text: string };
 export type SettingsMap = Record<string, string>;
+export type WakeCheckRequest = { transcript?: string; audio?: Blob };
+export type WakeCheckResponse = { wake_detected: boolean; phrase?: string | null; transcript?: string; mock?: boolean; message?: string };

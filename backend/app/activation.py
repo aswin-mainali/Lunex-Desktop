@@ -2,6 +2,15 @@ import threading, time
 from dataclasses import dataclass
 from .config import get_config
 
+WAKE_PHRASES = ("hey lunex", "hello lunex", "lunex")
+
+def detect_wake_phrase_text(transcript: str) -> tuple[bool, str | None]:
+    text = transcript.lower()
+    for phrase in WAKE_PHRASES:
+        if phrase in text:
+            return True, phrase
+    return False, None
+
 @dataclass
 class ActivationManager:
     state: str = "idle"

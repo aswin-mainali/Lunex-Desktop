@@ -22,33 +22,35 @@ npm run tauri
 - FastAPI backend on port 8787.
 - SQLite tables for command history, memory items, settings, tasks, and activation events.
 - Reactive AI core states for idle, wake detected, listening, transcribing, thinking, responding, double clap, confirmation required, blocked, and error.
-- Voice-reactive waveform that simulates amplitude for idle/listening/transcribing/thinking/responding/clap/blocked states.
+- Frontend microphone service for permission requests, push-to-talk recording, amplitude metering, wake listening, and double-clap detection.
+- Wake phrase detection with browser speech recognition when available, plus a backend `/activation/check-wake` endpoint that checks transcripts for `hey lunex`, `hello lunex`, or `lunex`.
+- Double clap detection with the Web Audio API: two amplitude peaks within 250-900 ms activate listening mode, with a cooldown to ignore repeated triggers.
+- Browser SpeechSynthesis voice responses when `tts_enabled` is ON.
 - Text command input routed to `/commands/route`.
-- Command intent classification and safety levels.
 - Critical commands are blocked; medium/high-risk commands still require confirmation except local task/reminder creation, which is allowed because it is non-destructive.
 - Real local task/reminder CRUD through `/tasks`, the dashboard Tasks panel, and the Tasks page.
-- Reminder/task text commands such as `remind me to submit my assignment tomorrow` create SQLite tasks.
-- Push-to-talk records audio when browser permissions are available, calls `/audio/transcribe`, routes the transcript, and refreshes tasks immediately.
-- Recent Files no longer shows fake examples. It shows an empty state until the user connects folders in Settings.
-- Settings persist wake phrase, double-clap, push-to-talk, folder placeholder, local memory, and local task/reminder storage toggles.
+- Push-to-talk records audio when browser permissions are available, calls `/audio/transcribe`, routes the transcript, speaks the response when TTS is enabled, and refreshes tasks immediately.
+- Recent Files shows an empty state until the user connects folders in Settings.
+- Settings persist wake phrase, double-clap, push-to-talk, TTS, folder placeholder, local memory, and local task/reminder storage toggles.
 - OpenAI service layer is optional and safe without an API key.
 
 ## Mocked or placeholder in v1
-- OpenAI completion, transcription, web search, file search, document summary, and TTS return safe mock output when no API key is present.
-- Wake phrase detection checks transcribed text for `Hey Lunex`, and simulate endpoints are available for development.
-- Double clap is backend amplitude-peak logic with cooldown plus a simulate endpoint; frontend animation shows two shockwaves and sharp waveform peaks.
+- OpenAI completion, transcription, web search, file search, document summary, and backend TTS return safe mock output when no API key is present.
+- `/audio/transcribe` returns a development mock transcript with `mock: true` / `mocked: true` and a clear message when no transcription provider is configured.
+- Wake audio chunk transcription falls back to a clear mock response unless browser speech recognition is available.
 - Folder connection is a Settings placeholder. Lunex does not scan user files automatically.
-- TTS is a text-only placeholder.
 
 ## Voice task creation flow
 1. Click the microphone button.
-2. Lunex enters `listening`, then `transcribing`.
-3. Backend returns a real transcript when available or a clear mock transcript when no API key is configured.
-4. The transcript is routed to `/commands/route` with source `voice_command`.
-5. Task/reminder commands create a local SQLite task and refresh the dashboard Tasks panel.
+2. Lunex requests microphone permission and enters `listening`.
+3. Click again to stop recording; Lunex enters `transcribing`.
+4. Backend returns a real transcript when available or a clear mock transcript when no API key is configured.
+5. The transcript is routed to `/commands/route` with source `voice_command`.
+6. Task/reminder commands create a local SQLite task and refresh the dashboard Tasks panel.
+7. If TTS is enabled, Lunex speaks the command response with browser speech synthesis.
 
 ## Activation flow
-`idle -> wake_detected -> listening -> transcribing -> thinking -> confirmation_required OR responding -> complete -> idle`
+`idle -> wake_detected OR clap_detected -> listening -> transcribing -> thinking -> responding -> complete -> idle`
 
 Wake phrase and double clap only enter listening mode. They never execute commands directly.
 

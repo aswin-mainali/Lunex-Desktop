@@ -1,4 +1,4 @@
-import type { ActivationStatus, CommandHistory, CommandResponse, SettingsMap, Task, TaskInput } from '../types/api';
+import type { ActivationStatus, CommandHistory, CommandResponse, SettingsMap, Task, TaskInput, WakeCheckRequest, WakeCheckResponse } from '../types/api';
 const API_BASE = import.meta.env.VITE_LUNEX_API_BASE ?? 'http://127.0.0.1:8787';
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) }, ...init });
@@ -11,7 +11,14 @@ export const api = {
   async commandHistory() { return request<CommandHistory[]>('/commands/history'); },
   async transcribe(blob?: Blob) {
     const form = new FormData(); if (blob) form.append('file', blob, 'push-to-talk.webm');
-    const res = await fetch(`${API_BASE}/audio/transcribe`, { method: 'POST', body: form }); if (!res.ok) throw new Error(await res.text()); return res.json() as Promise<{ transcript: string; mocked: boolean; activation_state: string; message?: string }>;
+    const res = await fetch(`${API_BASE}/audio/transcribe`, { method: 'POST', body: form }); if (!res.ok) throw new Error(await res.text()); return res.json() as Promise<{ transcript: string; mocked: boolean; mock: boolean; activation_state: string; message?: string }>;
+  },
+  async checkWake(payload: WakeCheckRequest) {
+    if (payload.audio) {
+      const form = new FormData(); form.append('file', payload.audio, 'wake-chunk.webm');
+      const res = await fetch(`${API_BASE}/activation/check-wake`, { method: 'POST', body: form }); if (!res.ok) throw new Error(await res.text()); return res.json() as Promise<WakeCheckResponse>;
+    }
+    return request<WakeCheckResponse>('/activation/check-wake', { method: 'POST', body: JSON.stringify({ transcript: payload.transcript ?? '' }) });
   },
   async activationStatus() { return request<ActivationStatus>('/activation/status'); },
   async toggleWake(on: boolean) { return request<ActivationStatus>(`/activation/wake/${on ? 'start' : 'stop'}`, { method: 'POST' }); },

@@ -1,14 +1,75 @@
 import { Mic, Radio, Send, Sparkles } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type React from 'react';
 import { api } from '../../services/api';
+import { audioService } from '../../services/audioService';
+import { speakResponse } from '../../services/ttsService';
 import type { ActivationStatus, CommandResponse } from '../../types/api';
-export function CommandBar({ onResult, setActivation, onTaskCreated }: { onResult: (r: CommandResponse | string) => void; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; onTaskCreated: () => Promise<void> }) {
-  const [command, setCommand] = useState(''); const [recording, setRecording] = useState(false); const recorder = useRef<MediaRecorder | null>(null); const chunks = useRef<Blob[]>([]);
-  const route = async (text: string, source: 'text_command' | 'voice_command' = 'text_command') => { if (!text.trim()) return; setActivation((current) => ({ ...current, state: 'thinking', current_state: 'thinking' })); const res = await api.routeCommand(text, false, source); onResult(res); if (res.task) await onTaskCreated(); setActivation((current) => ({ ...current, state: res.activation_state === 'blocked' ? 'blocked' : res.requires_confirmation ? 'confirmation_required' : 'responding', current_state: res.activation_state === 'blocked' ? 'blocked' : res.requires_confirmation ? 'confirmation_required' : 'responding' })); window.setTimeout(() => setActivation((current) => ({ ...current, state: 'idle', current_state: 'idle' })), res.activation_state === 'blocked' ? 1800 : 2200); setCommand(''); };
+
+export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled, pushToTalkEnabled, setVoiceNotice }: { onResult: (r: CommandResponse | string) => void; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; onTaskCreated: () => Promise<void>; ttsEnabled: boolean; pushToTalkEnabled: boolean; setVoiceNotice: (message: string) => void }) {
+  const [command, setCommand] = useState('');
+  const [recording, setRecording] = useState(false);
+
+  const finishState = (state: string) => {
+    window.setTimeout(() => setActivation((current) => ({ ...current, state: 'idle', current_state: 'idle' })), state === 'blocked' ? 1800 : 2400);
+  };
+
+  const route = async (text: string, source: 'text_command' | 'voice_command' = 'text_command') => {
+    if (!text.trim()) return;
+    setVoiceNotice('');
+    setActivation((current) => ({ ...current, state: 'thinking', current_state: 'thinking' }));
+    const res = await api.routeCommand(text, false, source);
+    onResult(res);
+    if (res.task) await onTaskCreated();
+    const nextState = res.activation_state === 'blocked' ? 'blocked' : res.requires_confirmation ? 'confirmation_required' : 'responding';
+    setActivation((current) => ({ ...current, state: nextState, current_state: nextState }));
+    const ttsWarning = await speakResponse(res.response, ttsEnabled);
+    if (ttsWarning) setVoiceNotice(ttsWarning);
+    finishState(nextState);
+    setCommand('');
+  };
+
   const send = async () => route(command);
-  const handleTranscript = async (blob?: Blob) => { setActivation((current) => ({ ...current, state: 'transcribing', current_state: 'transcribing' })); const t = await api.transcribe(blob); const transcript = t.transcript.replace('Mock transcription: ', ''); onResult(t.message ?? `${t.transcript}${t.mocked ? ' (mock transcription)' : ''}`); setCommand(transcript); await route(transcript, 'voice_command'); };
-  const pushToTalk = async () => { try { if (!recording && navigator.mediaDevices) { setActivation((current) => ({ ...current, state: 'listening', current_state: 'listening' })); const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); chunks.current = []; const r = new MediaRecorder(stream); recorder.current = r; r.ondataavailable = e => chunks.current.push(e.data); r.onstop = async () => { stream.getTracks().forEach(t=>t.stop()); await handleTranscript(new Blob(chunks.current, { type: 'audio/webm' })); }; r.start(); setRecording(true); } else { recorder.current?.stop(); setRecording(false); } } catch { setRecording(false); await handleTranscript(); } };
-  const toggleWake = async () => setActivation(await api.toggleWake(true));
+
+  const stopAndRouteRecording = async () => {
+    setRecording(false);
+    setActivation((current) => ({ ...current, state: 'transcribing', current_state: 'transcribing' }));
+    const blob = await audioService.stopRecording();
+    const transcription = await audioService.transcribe(blob);
+    const transcript = transcription.transcript.replace('Mock transcription: ', '');
+    if (transcription.message) setVoiceNotice(transcription.message);
+    onResult(`${transcript}${transcription.mocked ? ' (mock transcription)' : ''}`);
+    setCommand(transcript);
+    await route(transcript, 'voice_command');
+  };
+
+  const pushToTalk = async () => {
+    if (!pushToTalkEnabled) { setVoiceNotice('Push-to-talk is disabled in Settings.'); return; }
+    try {
+      if (!recording) {
+        setVoiceNotice('');
+        setActivation((current) => ({ ...current, state: 'listening', current_state: 'listening' }));
+        await audioService.startRecording();
+        setRecording(true);
+      } else {
+        await stopAndRouteRecording();
+      }
+    } catch {
+      setRecording(false);
+      setActivation((current) => ({ ...current, state: 'error', current_state: 'error' }));
+      setVoiceNotice('Microphone permission denied. Enable microphone access to use voice activation.');
+      finishState('error');
+    }
+  };
+
+  const toggleWake = async () => {
+    try {
+      await audioService.requestMicrophone();
+      setActivation(await api.toggleWake(true));
+    } catch {
+      setVoiceNotice('Microphone permission denied. Enable microphone access to use voice activation.');
+    }
+  };
+
   return <div className="command-wrap"><div className="command-bar"><Sparkles className="spark" size={21}/><input value={command} onChange={e=>setCommand(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} placeholder="Type a command or ask anything..."/><button className={recording?'recording':''} onClick={pushToTalk} title="Push to talk"><Mic size={20}/></button><button onClick={toggleWake} title="Wake listening"><Radio size={20}/></button><button className="send" onClick={send}><Send size={20}/></button></div><p>Press <b>/</b> to see commands · Press <b>Ctrl + K</b> to quick search</p></div>;
 }
