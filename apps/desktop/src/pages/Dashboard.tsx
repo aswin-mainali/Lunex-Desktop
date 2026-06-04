@@ -1,10 +1,25 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import type React from 'react';
 import { AICore } from '../components/dashboard/AICore';
 import { CommandBar } from '../components/dashboard/CommandBar';
 import { RightPanels } from '../components/dashboard/RightPanels';
-import type { ActivationStatus, CommandResponse } from '../types/api';
-export function Dashboard({ connected, activation, setActivation }: { connected: boolean; activation: ActivationStatus; setActivation: (a: ActivationStatus)=>void }) {
+import { api } from '../services/api';
+import type { ActivationStatus, CommandResponse, Task } from '../types/api';
+
+function welcomeText() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning. Lunex is online.';
+  if (hour < 18) return 'Good afternoon. Lunex is ready.';
+  return 'Good evening. Lunex is standing by.';
+}
+
+export function Dashboard({ connected, activation, setActivation, tasks, setTasks, refreshTasks, setPage }: { connected: boolean; activation: ActivationStatus; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; tasks: Task[]; setTasks: React.Dispatch<React.SetStateAction<Task[]>>; refreshTasks: () => Promise<void>; setPage: (page: string) => void }) {
   const [result, setResult] = useState<CommandResponse | string>('Voice response placeholder: text responses are shown here in v1.');
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const text = typeof result === 'string' ? result : result.response;
-  return <div className="dashboard"><section className="center-panel"><div className="top-label">LUNEX AI CORE</div><h2>GOOD MORNING</h2><h1><span>LUNEX</span> ONLINE</h1><p className="subtitle">How can I <em>assist</em> you today?</p><AICore state={activation.state || 'idle'} /><div className="chips"><button>Summarize my day</button><button>Find project files</button><button>Analyze data</button><button>Optimize system</button></div><div className="response-strip"><strong>{connected ? 'Backend connected' : 'Backend offline'}</strong><span>{text}</span><small>Wake {activation.wake_listening ? 'ON' : 'OFF'} · Double-clap {activation.clap_listening ? 'ON' : 'OFF'}</small></div><CommandBar onResult={setResult} setActivation={setActivation}/></section><RightPanels /></div>;
+  const state = (activation.current_state || activation.state || 'idle') as string;
+  const welcome = useMemo(welcomeText, []);
+  const completeTask = async (task: Task) => { const updated = await api.updateTask(task.id, { status: 'completed' }); setTasks(tasks.map((item) => item.id === updated.id ? updated : item)); };
+  const deleteTask = async (id: number) => { await api.deleteTask(id); setTasks(tasks.filter((task) => task.id !== id)); };
+  return <div className="dashboard"><section className="center-panel"><div className="top-label">LUNEX AI CORE</div><h2>{welcome}</h2><h1><span>LUNEX</span> ONLINE</h1><p className="subtitle">How can I <em>assist</em> you today?</p><AICore state={state} /><div className="chips"><button>Summarize my day</button><button>Find project files</button><button>Analyze data</button><button>Optimize system</button></div><div className="response-strip"><strong>{connected ? 'Backend connected' : 'Backend offline'}</strong><span>{text}</span><small>Wake {activation.wake_listening ? 'ON' : 'OFF'} · Double-clap {activation.clap_listening ? 'ON' : 'OFF'}</small></div><CommandBar onResult={setResult} setActivation={setActivation} onTaskCreated={refreshTasks}/></section><RightPanels tasks={tasks} setPage={setPage} onTaskSaved={(task) => setTasks([task, ...tasks])} onTaskCompleted={completeTask} onTaskDeleted={deleteTask} showTaskModal={showTaskModal} setShowTaskModal={setShowTaskModal} /></div>;
 }

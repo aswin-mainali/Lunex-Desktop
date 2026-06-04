@@ -19,6 +19,7 @@ def get_connection() -> sqlite3.Connection:
 def init_db() -> None:
     with get_connection() as conn:
         conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
+        migrate_tasks(conn)
         seed_defaults(conn)
 
 def seed_defaults(conn: sqlite3.Connection) -> None:
@@ -32,6 +33,22 @@ def seed_defaults(conn: sqlite3.Connection) -> None:
         "folders": "Documents, Desktop, Downloads",
         "appearance_theme": "Lunex Dark",
         "local_memory_enabled": True,
+        "local_tasks_enabled": True,
     }
     for key, value in defaults.items():
         conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (key, str(value).lower() if isinstance(value, bool) else str(value)))
+
+
+def migrate_tasks(conn: sqlite3.Connection) -> None:
+    existing = {row["name"] for row in conn.execute("PRAGMA table_info(tasks)")}
+    columns = {
+        "notes": "TEXT DEFAULT ''",
+        "due_date": "TEXT",
+        "due_time": "TEXT",
+        "source": "TEXT NOT NULL DEFAULT 'manual'",
+        "updated_at": "TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP",
+    }
+    for name, ddl in columns.items():
+        if name not in existing:
+            conn.execute(f"ALTER TABLE tasks ADD COLUMN {name} {ddl}")
+    conn.execute("UPDATE tasks SET status = 'pending' WHERE status = 'open'")

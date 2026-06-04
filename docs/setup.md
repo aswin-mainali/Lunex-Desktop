@@ -27,15 +27,18 @@ Use the npm Tauri CLI only; do not start this app with `cargo tauri dev`.
 - FastAPI service on port 8787.
 - SQLite schema and persistence for settings, memory, command history, tasks, and activation events.
 - Command router with intent and safety classification.
-- React dashboard, settings, and command history pages.
+- React dashboard, settings, command history, and tasks pages.
 - Push-to-talk UI that records browser audio when available and posts to `/audio/transcribe`.
-- Wake and clap toggles that update backend activation state.
+- Wake and clap toggles that update backend activation state and drive reactive orb/waveform animation.
+- Local task/reminder CRUD with SQLite persistence and command-router creation from text or voice transcripts.
+- Empty Recent Files state until folders are explicitly connected in Settings.
 
 ## What is mocked or placeholder
 - OpenAI responses, transcription, web search, file search, document summaries, and TTS all return safe mock responses when `OPENAI_API_KEY` is missing.
-- Wake phrase detection is practical placeholder logic: audio transcription text is checked for `Hey Lunex`.
-- Double-clap detection is implemented as amplitude peak logic in the backend and can be wired to real microphone packages later.
+- Wake phrase detection is practical placeholder logic: audio transcription text is checked for `Hey Lunex`; `/activation/wake/simulate` can trigger the visual flow in development.
+- Double-clap detection is implemented as amplitude peak logic in the backend and can be wired to real microphone packages later; `/activation/clap/simulate` can trigger the visual flow in development.
 - Voice response is text-only; the TTS service contains a non-blocking placeholder.
+- File indexing is not implemented and Lunex does not scan folders automatically.
 
 ## Wake phrase and double clap safety
 Wake phrase and double clap only move Lunex into `listening` mode. They never call `/commands/route` and never execute a command directly.

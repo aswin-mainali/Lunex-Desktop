@@ -9,6 +9,6 @@ def classify_safety(command: str, intent: str) -> str:
         return "critical"
     if any(word in text for word in HIGH_KEYWORDS):
         return "high"
-    if intent == "create_note" or any(word in text for word in MEDIUM_KEYWORDS):
+    if intent in {"create_note", "create_task", "create_reminder"} or any(word in text for word in MEDIUM_KEYWORDS):
         return "medium"
     return "low"
