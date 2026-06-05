@@ -1,5 +1,5 @@
 import { Mic, Radio, Send, Sparkles } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type React from 'react';
 import { api } from '../../services/api';
 import { audioService } from '../../services/audioService';
@@ -9,9 +9,15 @@ import type { ActivationStatus, CommandResponse } from '../../types/api';
 export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled, pushToTalkEnabled, setVoiceNotice, onMicPermission }: { onResult: (r: CommandResponse | string) => void; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; onTaskCreated: () => Promise<void>; ttsEnabled: boolean; pushToTalkEnabled: boolean; setVoiceNotice: (message: string) => void; onMicPermission?: (status: string) => void }) {
   const [command, setCommand] = useState('');
   const [recording, setRecording] = useState(false);
+  const stoppingRef = useRef(false);
 
   const finishState = (state: string) => {
-    window.setTimeout(() => setActivation((current) => ({ ...current, state: 'idle', current_state: 'idle' })), state === 'blocked' ? 1800 : 2400);
+    window.setTimeout(() => setActivation((current) => ({ ...current, state: 'idle', current_state: 'idle' })), state === 'blocked' ? 1800 : 2600);
+  };
+
+  const speakFinal = async (text: string) => {
+    const ttsWarning = await speakResponse(text, ttsEnabled);
+    if (ttsWarning) setVoiceNotice(ttsWarning);
   };
 
   const route = async (text: string, source: 'text_command' | 'voice_command' = 'text_command') => {
@@ -23,8 +29,7 @@ export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled,
     if (res.task) await onTaskCreated();
     const nextState = res.activation_state === 'blocked' ? 'blocked' : res.requires_confirmation ? 'confirmation_required' : 'responding';
     setActivation((current) => ({ ...current, state: nextState, current_state: nextState }));
-    const ttsWarning = await speakResponse(res.response, ttsEnabled);
-    if (ttsWarning) setVoiceNotice(ttsWarning);
+    await speakFinal(res.response);
     finishState(nextState);
     setCommand('');
   };
@@ -32,30 +37,44 @@ export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled,
   const send = async () => route(command);
 
   const stopAndRouteRecording = async () => {
+    if (stoppingRef.current) return;
+    stoppingRef.current = true;
     setRecording(false);
     setActivation((current) => ({ ...current, state: 'transcribing', current_state: 'transcribing' }));
     const blob = await audioService.stopRecording();
     const transcription = await audioService.transcribe(blob);
-    const transcript = transcription.transcript.replace('Mock transcription: ', '');
+    const transcript = transcription.transcript.trim();
+    if (!transcript) {
+      const message = transcription.message || 'I did not catch that. Try again.';
+      setVoiceNotice(message);
+      onResult(message);
+      await speakFinal(transcription.mock ? 'Real transcription is not configured yet.' : message);
+      finishState('responding');
+      stoppingRef.current = false;
+      return;
+    }
     if (transcription.message) setVoiceNotice(transcription.message);
     onResult(`${transcript}${transcription.mocked ? ' (mock transcription)' : ''}`);
     setCommand(transcript);
     await route(transcript, 'voice_command');
+    stoppingRef.current = false;
   };
 
   const pushToTalk = async () => {
     if (!pushToTalkEnabled) { setVoiceNotice('Push-to-talk is disabled in Settings.'); return; }
     try {
       if (!recording) {
+        stoppingRef.current = false;
         setVoiceNotice('');
         setActivation((current) => ({ ...current, state: 'listening', current_state: 'listening' }));
-        await audioService.startRecording();
+        await audioService.startSpeechRecording(stopAndRouteRecording);
         onMicPermission?.('granted');
         setRecording(true);
       } else {
         await stopAndRouteRecording();
       }
     } catch {
+      stoppingRef.current = false;
       setRecording(false);
       onMicPermission?.('denied');
       setActivation((current) => ({ ...current, state: 'error', current_state: 'error' }));

@@ -31,16 +31,23 @@ npm run tauri
 - Text command input routed to `/commands/route`.
 - Critical commands are blocked; medium/high-risk commands still require confirmation except local task/reminder creation, which is allowed because it is non-destructive.
 - Real local task/reminder CRUD through `/tasks`, the dashboard Tasks panel, and the Tasks page.
-- Push-to-talk records audio when browser permissions are available, calls `/audio/transcribe`, routes the transcript, speaks the response when TTS is enabled, and refreshes tasks immediately.
+- Push-to-talk records audio when browser permissions are available, auto-stops after silence or 15 seconds, calls `/audio/transcribe`, routes non-empty real transcripts, speaks the final response when TTS is enabled, and refreshes tasks immediately.
 - Recent Files shows an empty state until the user connects folders in Settings.
 - Settings persist wake phrase, double-clap, push-to-talk, TTS, folder placeholder, local memory, and local task/reminder storage toggles.
 - OpenAI service layer is optional and safe without an API key.
 
 ## Mocked or placeholder in v1
 - OpenAI completion, transcription, web search, file search, document summary, and backend TTS return safe mock output when no API key is present.
-- `/audio/transcribe` returns a development mock transcript with `mock: true` / `mocked: true` and a clear message when no transcription provider is configured.
+- `/audio/transcribe` returns an empty transcript with `mock: true` / `mocked: true` and a clear message when no transcription provider is configured; it does not invent task text.
 - Wake phrase detection is real only when the Tauri WebView exposes Web Speech API. If unsupported, Lunex shows an honest unsupported message and recommends push-to-talk or clap activation.
 - Folder connection is a Settings placeholder. Lunex does not scan user files automatically.
+
+
+## General AI answers
+- General questions such as `what is photosynthesis` route to `general_ai`.
+- If `OPENAI_API_KEY` is available in `backend/.env` or the backend environment, Lunex answers through the backend OpenAI service.
+- If the key is missing, Lunex returns: `OpenAI API key is not configured. Add OPENAI_API_KEY in backend/.env to enable AI answers.`
+- Live/current web search is not faked; `web_search` returns a clear not-configured message until a real web search service is connected.
 
 ## Safe local actions
 - `open calculator`, `open notepad`, `open paint`, `open command prompt`, `open powershell`, `open file explorer`, and `open settings` launch only strict allowlisted Windows commands with `subprocess.Popen(..., shell=False)`.

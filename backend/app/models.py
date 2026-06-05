@@ -18,6 +18,8 @@ class CommandResponse(BaseModel):
     requires_confirmation: bool = False
     activation_state: str = "complete"
     task: dict[str, Any] | None = None
+    source: str = "local"
+    mocked: bool = False
 
 class MemoryCreate(BaseModel):
     title: str

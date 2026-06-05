@@ -36,6 +36,9 @@ class AudioService {
   private wakeRecognition: SpeechRecognition | null = null;
   private wakeRecorder: MediaRecorder | null = null;
   private wakeTimer = 0;
+  private autoStopTimer = 0;
+  private recordingStartedAt = 0;
+  private silenceStartedAt = 0;
 
   async requestMicrophone(): Promise<MediaStream> {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -56,7 +59,28 @@ class AudioService {
     if (onAmplitude) await this.startAmplitudeMeter(onAmplitude);
   }
 
+
+  async startSpeechRecording(onAutoStop: () => void, onAmplitude?: AmplitudeHandler, options = { silenceThreshold: 0.035, silenceMs: 1200, minMs: 800, maxMs: 15000 }): Promise<void> {
+    this.recordingStartedAt = Date.now();
+    await this.startRecording((amplitude) => {
+      onAmplitude?.(amplitude);
+      const now = Date.now();
+      const elapsed = now - this.recordingStartedAt;
+      if (amplitude >= options.silenceThreshold) {
+        this.silenceStartedAt = 0;
+        return;
+      }
+      if (elapsed < options.minMs) return;
+      if (!this.silenceStartedAt) this.silenceStartedAt = now;
+      if (now - this.silenceStartedAt >= options.silenceMs) onAutoStop();
+    });
+    this.silenceStartedAt = 0;
+    this.autoStopTimer = window.setTimeout(onAutoStop, options.maxMs);
+  }
+
   async stopRecording(): Promise<Blob> {
+    if (this.autoStopTimer) window.clearTimeout(this.autoStopTimer);
+    this.autoStopTimer = 0;
     if (!this.recorder || this.recorder.state === 'inactive') return new Blob(this.chunks, { type: 'audio/webm' });
     await new Promise<void>((resolve) => {
       this.recorder!.onstop = () => resolve();
@@ -173,6 +197,8 @@ class AudioService {
     if (this.clapFrame) window.cancelAnimationFrame(this.clapFrame);
     this.amplitudeFrame = 0;
     this.clapFrame = 0;
+    if (this.autoStopTimer) window.clearTimeout(this.autoStopTimer);
+    this.autoStopTimer = 0;
     this.analyser?.disconnect();
     this.analyser = null;
   }

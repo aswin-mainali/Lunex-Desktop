@@ -26,6 +26,8 @@ def route_command(payload: CommandRequest):
             due = " without a specific time" if not parsed["due_date"] and not parsed["due_time"] else ""
             result["response"] = f"Added task: {task['title']}{due}."
             result["task"] = task
+            result["source"] = source
+            result["mocked"] = False
     with get_connection() as conn:
         conn.execute("INSERT INTO command_history(command_text, intent, safety_level, status, response) VALUES (?, ?, ?, ?, ?)", (payload.command, result["intent"], result["safety_level"], result["status"], result["response"]))
         conn.commit()

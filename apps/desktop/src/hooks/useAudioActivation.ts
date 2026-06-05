@@ -10,10 +10,12 @@ type VoiceDebug = {
   tts: string;
   lastClapEvent: string;
   lastWakeEvent: string;
+  currentAmplitude: string;
+  clapThreshold: string;
 };
 
 const initialActivation: ActivationStatus = { state: 'idle', current_state: 'idle', wake_listening: false, clap_listening: false, wake_enabled: false, clap_enabled: false, last_event: 'none' };
-const initialDebug: VoiceDebug = { micPermission: 'not requested', clapListener: 'inactive', wakeListener: 'inactive', tts: 'off', lastClapEvent: 'none', lastWakeEvent: 'none' };
+const initialDebug: VoiceDebug = { micPermission: 'not requested', clapListener: 'inactive', wakeListener: 'inactive', tts: 'off', lastClapEvent: 'none', lastWakeEvent: 'none', currentAmplitude: '0.000', clapThreshold: '0.620' };
 
 export function useAudioActivation() {
   const [activation, setActivation] = useState<ActivationStatus>(initialActivation);
@@ -92,7 +94,7 @@ export function useAudioActivation() {
         const next = await api.simulateClap();
         showTransientState('clap_detected', next);
       },
-      undefined,
+      (amplitude) => setVoiceDebug((debug) => ({ ...debug, currentAmplitude: amplitude.toFixed(3) })),
       () => setVoiceDebug((debug) => ({ ...debug, lastClapEvent: new Date().toLocaleTimeString() })),
     ).then(() => {
       setVoiceDebug((debug) => ({ ...debug, micPermission: 'granted', clapListener: 'active' }));

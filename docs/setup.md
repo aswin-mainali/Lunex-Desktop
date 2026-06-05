@@ -28,7 +28,7 @@ Use the npm Tauri CLI only; do not start this app with `cargo tauri dev`.
 - SQLite schema and persistence for settings, memory, command history, tasks, and activation events.
 - Command router with intent, safety classification, approved Windows app launching, and approved website opening.
 - React dashboard, settings, command history, and tasks pages.
-- Push-to-talk UI that records browser audio when available and posts to `/audio/transcribe`.
+- Push-to-talk UI that records browser audio when available, auto-stops after silence, and posts to `/audio/transcribe`.
 - Wake and clap toggles that request microphone permission, update backend activation state, and drive reactive orb/waveform animation.
 - Local task/reminder CRUD with SQLite persistence and command-router creation from text or voice transcripts.
 - Empty Recent Files state until folders are explicitly connected in Settings.
@@ -40,7 +40,7 @@ Use the npm Tauri CLI only; do not start this app with `cargo tauri dev`.
 - Unapproved apps and unsafe URL schemes are blocked.
 
 ## What is mocked or placeholder
-- OpenAI responses, transcription, web search, file search, document summaries, and TTS all return safe mock responses when `OPENAI_API_KEY` is missing.
+- General AI answers and transcription require `OPENAI_API_KEY`; without it Lunex returns clear missing-key or empty-transcript fallback messages instead of fake content. Web search, file search, document summaries, and backend TTS remain placeholders.
 - Wake phrase detection uses browser speech recognition when available and checks transcripts through `/activation/check-wake`; `/activation/wake/simulate` can trigger the visual flow in development.
 - Double-clap detection is implemented in the frontend with the Web Audio API: two peaks within 250-900 ms trigger listening mode; `/activation/clap/simulate` can trigger the visual flow in development.
 - Voice responses use browser SpeechSynthesis when `tts_enabled` is ON; the backend TTS service remains a non-blocking placeholder.
