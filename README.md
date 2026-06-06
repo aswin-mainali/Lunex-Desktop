@@ -24,10 +24,11 @@ npm run tauri
 - Reactive AI core states for idle, wake detected, listening, transcribing, thinking, responding, double clap, confirmation required, blocked, and error.
 - Real safe Windows app launching for an allowlist: Calculator, Notepad, Paint, Command Prompt, PowerShell, File Explorer, and Settings.
 - Real safe website opening for approved names such as Google, YouTube, Gmail, GitHub, ChatGPT, OpenAI, and backend docs, plus safe http/https URLs.
-- Frontend microphone service for permission requests, push-to-talk recording, amplitude metering, wake listening, and double-clap detection.
+- Frontend microphone service for permission requests, push-to-talk recording with silence feedback, amplitude metering, wake listening, and double-clap detection.
 - Wake phrase detection with browser speech recognition when available, plus a backend `/activation/check-wake` endpoint that checks transcripts for `hey lunex`, `hello lunex`, or `lunex`.
 - Double clap detection with the Web Audio API: two amplitude peaks within 250-900 ms activate listening mode, with a cooldown to ignore repeated triggers.
-- Browser SpeechSynthesis voice responses when `tts_enabled` is ON.
+- Browser SpeechSynthesis voice responses when `tts_enabled` is ON, with visible ready/speaking/unavailable/disabled status.
+- Response card actions: Speak again, Copy, and Clear.
 - Text command input routed to `/commands/route`.
 - Critical commands are blocked; medium/high-risk commands still require confirmation except local task/reminder creation, which is allowed because it is non-destructive.
 - Real local task/reminder CRUD through `/tasks`, the dashboard Tasks panel, and the Tasks page.

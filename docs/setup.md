@@ -54,3 +54,9 @@ Wake phrase and double clap only move Lunex into `listening` mode. They never ca
 - Missing API key: expected; Lunex returns mock data and does not crash.
 - Vite watch issues: `vite.config.ts` ignores `src-tauri/target`, `node_modules`, and `.git`.
 - Icons: bundling is disabled in v1 so dev mode avoids missing icon errors.
+
+## Response display and TTS checks
+- Command responses render in a compact assistant reply card above the command bar with source, status, safety, timestamp, and actions.
+- Use **Speak again** to replay the latest response, **Copy** to copy it, and **Clear** to hide the card.
+- Settings includes **Test Voice**, which speaks “Lunex voice response is active.” with browser SpeechSynthesis.
+- Detailed audio diagnostics are available on the System page; the dashboard only keeps compact Wake/Clap/TTS/Mic status.

@@ -34,6 +34,8 @@ export function App() {
         ? <CommandCenter />
         : page === 'Tasks'
           ? <TasksPage tasks={tasks} setTasks={setTasks} refreshTasks={refreshTasks} />
-          : <SimplePage title={page} />;
+          : page === 'System'
+            ? <SimplePage title="System"><div className="settings-debug">Mic permission: {audio.voiceDebug.micPermission} · Wake listener: {audio.voiceDebug.wakeListener} · Clap listener: {audio.voiceDebug.clapListener} · TTS: {audio.voiceDebug.tts} · Last clap: {audio.voiceDebug.lastClapEvent} · Last wake: {audio.voiceDebug.lastWakeEvent} · Amp: {audio.voiceDebug.currentAmplitude}/{audio.voiceDebug.clapThreshold}</div></SimplePage>
+            : <SimplePage title={page} />;
   return <AppShell page={page} setPage={setPage} connected={connected} activation={audio.activation}>{content}</AppShell>;
 }

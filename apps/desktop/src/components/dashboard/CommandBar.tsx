@@ -6,7 +6,7 @@ import { audioService } from '../../services/audioService';
 import { speakResponse } from '../../services/ttsService';
 import type { ActivationStatus, CommandResponse } from '../../types/api';
 
-export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled, pushToTalkEnabled, setVoiceNotice, onMicPermission }: { onResult: (r: CommandResponse | string) => void; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; onTaskCreated: () => Promise<void>; ttsEnabled: boolean; pushToTalkEnabled: boolean; setVoiceNotice: (message: string) => void; onMicPermission?: (status: string) => void }) {
+export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled, pushToTalkEnabled, setVoiceNotice, onMicPermission, onTtsStatus }: { onResult: (r: CommandResponse | string) => void; setActivation: React.Dispatch<React.SetStateAction<ActivationStatus>>; onTaskCreated: () => Promise<void>; ttsEnabled: boolean; pushToTalkEnabled: boolean; setVoiceNotice: (message: string) => void; onMicPermission?: (status: string) => void; onTtsStatus: (status: string) => void }) {
   const [command, setCommand] = useState('');
   const [recording, setRecording] = useState(false);
   const stoppingRef = useRef(false);
@@ -16,8 +16,13 @@ export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled,
   };
 
   const speakFinal = async (text: string) => {
-    const ttsWarning = await speakResponse(text, ttsEnabled);
-    if (ttsWarning) setVoiceNotice(ttsWarning);
+    if (!ttsEnabled) { onTtsStatus('disabled'); return; }
+    const ttsWarning = await speakResponse(text, true, {
+      onStart: () => onTtsStatus('speaking'),
+      onEnd: () => onTtsStatus('ready'),
+      onError: () => onTtsStatus('unavailable'),
+    });
+    if (ttsWarning && ttsWarning !== 'TTS disabled') setVoiceNotice(ttsWarning);
   };
 
   const route = async (text: string, source: 'text_command' | 'voice_command' = 'text_command') => {
@@ -65,7 +70,7 @@ export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled,
     try {
       if (!recording) {
         stoppingRef.current = false;
-        setVoiceNotice('');
+        setVoiceNotice('Listening... speak now. Auto-stops after silence, or click again to stop.');
         setActivation((current) => ({ ...current, state: 'listening', current_state: 'listening' }));
         await audioService.startSpeechRecording(stopAndRouteRecording);
         onMicPermission?.('granted');
@@ -94,5 +99,5 @@ export function CommandBar({ onResult, setActivation, onTaskCreated, ttsEnabled,
     }
   };
 
-  return <div className="command-wrap"><div className="command-bar"><Sparkles className="spark" size={21}/><input value={command} onChange={e=>setCommand(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} placeholder="Type a command or ask anything..."/><button className={recording?'recording':''} onClick={pushToTalk} title="Push to talk"><Mic size={20}/></button><button onClick={toggleWake} title="Wake listening"><Radio size={20}/></button><button className="send" onClick={send}><Send size={20}/></button></div><p>Press <b>/</b> to see commands · Press <b>Ctrl + K</b> to quick search</p></div>;
+  return <div className="command-wrap"><div className="command-bar"><Sparkles className="spark" size={21}/><input value={command} onChange={e=>setCommand(e.target.value)} onKeyDown={e=>{ if(e.key==='Enter') send(); }} placeholder="Type a command or ask anything..."/><button className={recording?'recording':''} onClick={pushToTalk} title={recording ? 'Listening — click again to stop' : 'Push to talk'} disabled={!pushToTalkEnabled}><Mic size={20}/></button><button onClick={toggleWake} title="Wake listening"><Radio size={20}/></button><button className="send" onClick={send}><Send size={20}/></button></div><p>Press <b>/</b> to see commands · Press <b>Ctrl + K</b> to quick search</p></div>;
 }
