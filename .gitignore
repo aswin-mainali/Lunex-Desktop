@@ -1,0 +1,14 @@
+node_modules/
+apps/desktop/node_modules/
+apps/desktop/dist/
+apps/desktop/src-tauri/target/
+backend/.venv/
+.venv/
+.env
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
